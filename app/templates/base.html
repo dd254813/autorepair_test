@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script type="text/javascript">
+  $(document).ready(function(){
+
+    function in_array(value, array){
+      for(var i = 0; i < array.length; i++){
+        if(array[i] == value) return true;
+      }
+      return false;
+    }
+
+    // При выборе даты отправляется GET запрос для получения занятого времени мастера. Все занятое время скрывается.
+    $('#date').on('input', function() {
+    var date = document.getElementById("date").value;
+    var workingDays = $('#date').attr('days').replace('[','').replace(']','');
+    for (var z=0; z<workingDays.length; z++){
+      workingDays = workingDays.replace(',','')
+    }
+    workingDays = workingDays.split(' ')
+    dateNum = new Date(date);
+    currentDate = new Date()
+    if (in_array(String(dateNum.getDay()), workingDays) && currentDate.getDate()<=dateNum.getDate()){
+    var worker =  $('#workers').val()
+    data = {
+      date: date,
+      worker: worker
+    }
+    $.ajax({
+        type: "GET",
+        url: "{% url 'get_holded_time' %}",
+        data: data,
+        success: function(data){
+          for (var i=0; i<data.result.length; i++){
+            $('#'+data.result[i]).css('display', 'none');
+          }
+        }
+    })
+    }
+    else if (currentDate.getDate()>dateNum.getDate()){
+      alert('Запись на прошедший период недоступна!');
+      document.getElementById("date").value = '';
+    }
+    else{
+      alert('Это выходной день');
+      document.getElementById("date").value = '';
+    }
+    });
+
+    // При изменении мастера отображается весь список рабочих часов, значение даты сбрасывается для нового ввода
+    $('#workers').on('input', function() {
+      document.getElementById("date").value = '';
+      var elements = document.getElementsByClassName('hours');
+      for (var i=0; i<elements.length; i++){
+        if (elements[i].style.display=='none'){
+          elements[i].style.display='block';
+        }
+      }
+
+    });
+  })
+      // Функция записи в базу данных информации о диагностике авто (через GET запрос)
+    function writeToSch(){
+        var worker = document.getElementById("workers").value;
+        var date = document.getElementById("date").value;
+        var time = document.getElementById("hours").value;
+        var fio = document.getElementById("FIO").value;
+        var car = document.getElementById("car").value;
+        if (worker!='' && date!='' && time!='' && fio!='' && car!=''){
+          data = {
+            date: date,
+            time: time,
+            worker: worker,
+            fio: fio,
+            car: car
+          }
+          $.ajax({
+            type: "GET",
+            url: "{% url 'sing_up_for_diagnostic' %}",
+            data: data,
+            success: function(data){
+              alert(data.result);
+              location.reload();
+            }
+          })
+        }
+        else {
+          alert("Зполните все поля ввода иформации!!");
+        }
+      }
+  </script>
+  <title>Запись на диагностику автомобиля</title>
+</head>
+<body>
+  <h2>Запись на диагностику автомобиля</h2>
+<form>
+  {% csrf_token %}
+  <input type="text" placeholder="ФИО" id="FIO">
+  <input type="text" placeholder="марка авто" id="car">
+
+  <input type="date" id="date" days="{{days}}">
+
+  <select id="hours">
+  <option selected>Выберите время</option>
+    {% for h in hours %}
+    <option id="{{h}}" class='hours'>{{ h }}</option>
+    {% endfor %}
+
+  </select>
+
+  <select id="workers">
+    {% for w in workers %}
+    <option>{{ w }}</option>
+    {% endfor %}
+  </select>
+  <button type="button" name="button" onclick="writeToSch()">Записаться</button>
+
+  <!-- {% for s in schedule %}
+    <br/>
+    {{ s.worker.name }} - {{ s.date }} - {{ s.time_m }}.... {{ s.customer.name }} - {{ s.customer.car }}
+
+  {% endfor %} -->
+
+
+</form>
+</body>
+</html>
